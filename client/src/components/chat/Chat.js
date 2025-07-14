@@ -103,7 +103,13 @@ const Chat = () => {
 
     // Listen for new messages
     newSocket.on('newMessage', (message) => {
-      setMessages(prev => [...prev, message]);
+      // Only add the message if it belongs to the currently selected chat
+      if (
+        selectedUser &&
+        (message.sender._id === selectedUser._id || message.recipient._id === selectedUser._id)
+      ) {
+        setMessages(prev => [...prev, message]);
+      }
     });
 
     // Listen for typing indicators
@@ -128,7 +134,7 @@ const Chat = () => {
     return () => {
       newSocket.close();
     };
-  }, [user._id]);
+  }, [user._id, selectedUser]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
