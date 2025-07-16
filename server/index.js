@@ -22,6 +22,9 @@ const io = socketIo(server, {
   }
 });
 
+// Make io available in routes
+app.set('socketio', io);
+
 // Middleware
 app.use(cors({
   origin: ["http://localhost:3000", "http://localhost:3001"],
@@ -73,35 +76,6 @@ io.on('connection', (socket) => {
       console.log(`User ${userId} joined`);
     } catch (error) {
       console.error('Error updating user online status:', error);
-    }
-  });
-
-  // Handle private messages
-  socket.on('privateMessage', async (data) => {
-    try {
-      // Save message to DB
-      const message = new Message({
-        sender: data.senderId,
-        recipient: data.recipientId,
-        content: data.content,
-        messageType: data.messageType || 'text'
-      });
-      await message.save();
-      // Populate sender and recipient
-      await message.populate('sender', 'username avatar');
-      await message.populate('recipient', 'username avatar');
-      // Emit to recipient
-      const recipientSocketId = connectedUsers.get(data.recipientId);
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit('newMessage', message);
-      }
-      // Emit to sender (for real-time update)
-      const senderSocketId = connectedUsers.get(data.senderId);
-      if (senderSocketId && senderSocketId !== recipientSocketId) {
-        io.to(senderSocketId).emit('newMessage', message);
-      }
-    } catch (error) {
-      console.error('Socket privateMessage error:', error);
     }
   });
 

@@ -54,7 +54,8 @@ const Chat = () => {
   const { user, logout } = useAuth();
   const [selectedUser, setSelectedUser] = useState(null);
   const [users, setUsers] = useState([]);
-  const [messages, setMessages] = useState([]);
+  const [messagesMap, setMessagesMap] = useState({}); // Use object as map
+  const messages = Object.values(messagesMap).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   const [socket, setSocket] = useState(null);
   const [typingUsers, setTypingUsers] = useState({});
   const [onlineUsers, setOnlineUsers] = useState(new Set());
@@ -63,6 +64,15 @@ const Chat = () => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const currentChatUserIdRef = useRef(null); // NEW
+  const [fetchingMessages, setFetchingMessages] = useState(false); // NEW
+  const pendingMessagesRef = useRef([]); // NEW
+  const [listeningForRealtime, setListeningForRealtime] = useState(true); // NEW
+  const listeningForRealtimeRef = useRef(listeningForRealtime); // NEW
+  useEffect(() => {
+    listeningForRealtimeRef.current = listeningForRealtime;
+  }, [listeningForRealtime]);
+  // REMOVED: const [loadingMessages, setLoadingMessages] = useState(false);
 
   const toggleDarkMode = () => setDarkMode((prev) => !prev);
 
@@ -84,7 +94,7 @@ const Chat = () => {
 
     // Join with user ID
     newSocket.emit('join', user._id);
-    console.log('Emitting join event with user ID:', user._id); // Debug log
+    console.log('Emitting join event with user ID:', user._id);
 
     // Listen for online/offline events
     newSocket.on('userOnline', (userId) => {
@@ -103,14 +113,24 @@ const Chat = () => {
 
     // Listen for new messages
     newSocket.on('newMessage', (message) => {
-      // Only add the message if it belongs to the currently selected chat
+      console.log('[socket newMessage] Received:', message._id, 'for chat:', currentChatUserIdRef.current, 'msg sender:', message.sender._id, 'msg recipient:', message.recipient._id);
       if (
-        selectedUser &&
-        (message.sender._id === selectedUser._id || message.recipient._id === selectedUser._id)
+        listeningForRealtimeRef.current &&
+        currentChatUserIdRef.current &&
+        (message.sender._id === currentChatUserIdRef.current || message.recipient._id === currentChatUserIdRef.current)
       ) {
-        setMessages(prev => [...prev, message]);
+        setMessagesMap(prev => {
+          if (prev[message._id]) {
+            console.log('[socket newMessage] Duplicate detected, skipping:', message._id);
+            return prev;
+          }
+          const updated = { ...prev, [message._id]: message };
+          console.log('[socket newMessage] State after add:', Object.keys(updated));
+          return updated;
+        });
       }
     });
+    
 
     // Listen for typing indicators
     newSocket.on('userTyping', ({ userId, isTyping }) => {
@@ -122,19 +142,48 @@ const Chat = () => {
 
     // Listen for message read receipts
     newSocket.on('messageRead', ({ messageId, readBy }) => {
-      setMessages(prev => 
-        prev.map(msg => 
+      setMessagesMap(prev => 
+        Object.fromEntries(Object.entries(prev).map(([id, msg]) => 
           msg._id === messageId 
-            ? { ...msg, isRead: true, readBy: [...(msg.readBy || []), readBy] }
-            : msg
-        )
+            ? [id, { ...msg, isRead: true, readBy: [...(msg.readBy || []), readBy] }]
+            : [id, msg]
+        ))
       );
     });
 
+    // NEW: Listen for message deletion events
+    newSocket.on('messageDeleted', ({ messageId, deletedBy }) => {
+      console.log('Message deleted:', messageId, 'by user:', deletedBy);
+      // Remove the deleted message from the current view
+      setMessagesMap(prev => {
+        const newMap = { ...prev };
+        delete newMap[messageId];
+        return newMap;
+      });
+    });
+
+    // NEW: Listen for conversation deletion events
+    newSocket.on('conversationDeleted', ({ deletedBy, messageIds }) => {
+      console.log('Conversation deleted by:', deletedBy, 'messageIds:', messageIds);
+      // Remove all deleted messages from the current view
+      setMessagesMap(prev => {
+        const newMap = { ...prev };
+        messageIds.forEach(id => delete newMap[id]);
+        return newMap;
+      });
+    });
+
     return () => {
+      newSocket.off('userOnline');
+      newSocket.off('userOffline');
+      newSocket.off('newMessage');
+      newSocket.off('userTyping');
+      newSocket.off('messageRead');
+      newSocket.off('messageDeleted');
+      newSocket.off('conversationDeleted');
       newSocket.close();
     };
-  }, [user._id, selectedUser]);
+  }, [user._id]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -151,7 +200,7 @@ const Chat = () => {
     if (socket) {
       socket.emit('getOnlineUsers');
       socket.on('onlineUsersList', (userIds) => {
-        console.log('Received online users list:', userIds); // Debug log
+        console.log('Received online users list:', userIds);
         setOnlineUsers(new Set(userIds));
       });
     }
@@ -165,6 +214,9 @@ const Chat = () => {
   // Load messages when selected user changes
   useEffect(() => {
     if (selectedUser) {
+      setMessagesMap({}); // Clear messages immediately on chat switch
+      setListeningForRealtime(false); // Ignore real-time during fetch
+      currentChatUserIdRef.current = selectedUser._id; // Track current chat
       loadMessages(selectedUser._id);
     }
   }, [selectedUser]);
@@ -196,11 +248,14 @@ const Chat = () => {
       setOnlineUsers(onlineUserIds);
     } catch (error) {
       console.error('Error loading users:', error);
-      setUsers([]); // Set empty array on error
+      setUsers([]);
     }
   };
 
   const loadMessages = async (userId) => {
+    console.log('[loadMessages] Start fetching for user:', userId);
+    setFetchingMessages(true);
+    setListeningForRealtime(false);
     try {
       const response = await fetch(`/api/messages/conversation/${userId}`, {
         headers: {
@@ -210,16 +265,27 @@ const Chat = () => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const messagesData = await response.json();
-      
-      // Ensure messagesData is an array
-      const messagesArray = Array.isArray(messagesData) ? messagesData : [];
-      setMessages(messagesArray);
+      const fetchedMessages = await response.json();
+      console.log('[loadMessages] Fetched messages:', fetchedMessages.map(m => m._id));
+      if (currentChatUserIdRef.current === userId) {
+        const newMap = {};
+        fetchedMessages.forEach(m => { newMap[m._id] = m; });
+        setMessagesMap(newMap);
+        setListeningForRealtime(true);
+        setTimeout(() => {
+          // Log after state update
+          console.log('[loadMessages] State after setMessagesMap:', Object.keys(newMap));
+        }, 0);
+      }
     } catch (error) {
       console.error('Error loading messages:', error);
-      setMessages([]); // Set empty array on error
+      setMessagesMap({});
+      setListeningForRealtime(true);
+    } finally {
+      setFetchingMessages(false);
     }
   };
+  
 
   const sendMessage = async (content) => {
     if (!selectedUser || !content.trim()) return;
@@ -240,16 +306,7 @@ const Chat = () => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
-      // Emit socket event for real-time delivery
-      if (socket) {
-        socket.emit('privateMessage', {
-          recipientId: selectedUser._id,
-          senderId: user._id,
-          content: content.trim(),
-          timestamp: new Date()
-        });
-      }
+      // No socket.emit here! The backend will emit the newMessage event after saving.
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Failed to send message. Please try again.');
@@ -278,6 +335,85 @@ const Chat = () => {
   const cancelLogout = () => {
     setShowLogoutModal(false);
   };
+
+  // Improved delete handlers
+  const handleDeleteMessage = async (messageId) => {
+    if (!messageId) {
+      console.error('No message ID provided');
+      return;
+    }
+
+    try {
+      console.log('Deleting message:', messageId);
+      const token = getToken();
+      
+      const response = await fetch(`/api/messages/${messageId}`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Delete message result:', result);
+
+      // Remove the message from local state immediately
+      setMessagesMap(prev => {
+        const newMap = { ...prev };
+        delete newMap[messageId];
+        return newMap;
+      });
+      
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      alert('Failed to delete message. Please try again.');
+    }
+  };
+
+  const handleDeleteChat = async () => {
+    if (!selectedUser) {
+      console.error('No selected user');
+      return;
+    }
+
+    try {
+      console.log('Deleting chat with user:', selectedUser._id);
+      const token = getToken();
+      
+      const response = await fetch(`/api/messages/conversation/${selectedUser._id}`, {
+        method: 'DELETE',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Delete chat result:', result);
+
+      // Clear all messages from local state immediately
+      setMessagesMap({});
+      
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      alert('Failed to delete chat. Please try again.');
+    }
+  };
+
+  // Diagnostic logging for duplicates
+  useEffect(() => {
+    console.log('[messagesMap] keys:', Object.keys(messagesMap));
+    console.log('[messages] array:', messages.map(m => ({ _id: m._id, content: m.content })));
+  }, [messagesMap]);
 
   return (
     <div className={`h-screen flex ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
@@ -369,6 +505,9 @@ const Chat = () => {
             currentUser={user}
             messagesEndRef={messagesEndRef}
             darkMode={darkMode}
+            onDeleteMessage={handleDeleteMessage}
+            onDeleteChat={handleDeleteChat}
+            loadMessages={loadMessages}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center">
@@ -396,4 +535,4 @@ const Chat = () => {
   );
 };
 
-export default Chat; 
+export default Chat;
