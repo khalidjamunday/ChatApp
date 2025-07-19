@@ -426,7 +426,7 @@ const Chat = () => {
       {/* Sidebar */}
       <div className={`${showUserList ? 'w-80' : 'w-16'} bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 flex flex-col`}>
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <div className={`p-4 border-b flex items-center justify-between ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           {showUserList ? (
             <>
               <div className="flex items-center space-x-3">
@@ -434,7 +434,7 @@ const Chat = () => {
                   {user.username.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <h2 className="font-semibold text-gray-900 dark:text-white">{user.username}</h2>
+                  <h2 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user.username}</h2>
                   <p className="text-sm text-green-600">Online</p>
                 </div>
               </div>

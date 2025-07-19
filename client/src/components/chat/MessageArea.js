@@ -290,24 +290,25 @@ const MessageArea = ({
   return (
     <div className={`flex-1 flex flex-col h-full bg-gradient-to-br ${darkMode ? 'from-gray-900 via-gray-800 to-gray-900' : 'from-gray-50 via-white to-gray-100'}`}>
       {/* Header */}
-      <div className={`bg-white border-b px-6 py-4 flex-shrink-0 shadow-sm ${darkMode ? 'bg-gray-900 border-gray-700' : 'border-gray-200'}`}>
+      <div className={`border-b px-6 py-4 flex-shrink-0 shadow-sm ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
-              {selectedUser.username.charAt(0).toUpperCase()}
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold shadow
+              ${darkMode ? 'bg-primary-400 text-gray-900' : 'bg-primary-600 text-white'}`}>
+              {selectedUser && selectedUser.username ? selectedUser.username.charAt(0).toUpperCase() : ''}
             </div>
             <div>
               <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                {selectedUser.username}
+                {selectedUser && selectedUser.username ? selectedUser.username : ''}
               </h3>
-              <p className="text-sm text-gray-500">
-                {selectedUser.isOnline ? 'Online' : 'Offline'}
+              <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                {selectedUser && selectedUser.isOnline ? 'Online' : 'Offline'}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <ChatDeleteButton />
-            <button className="text-gray-400 hover:text-gray-600 transition-colors">
+            <button className="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-300">
               <FiMoreVertical size={20} />
             </button>
           </div>
