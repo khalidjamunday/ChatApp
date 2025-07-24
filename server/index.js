@@ -7,9 +7,11 @@ const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
 const messageRoutes = require('./routes/messages');
 const userRoutes = require('./routes/users');
+const groupRoutes = require('./routes/groups');
 const { authenticateToken } = require('./middleware/auth');
 const User = require('./models/User');
 const Message = require('./models/Message');
+const Group = require('./models/Group');
 
 dotenv.config();
 
@@ -33,6 +35,12 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Make connectedUsers map available in routes
+app.use((req, res, next) => {
+  req.connectedUsers = connectedUsers;
+  next();
+});
+
 // Database connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/chatapp', {
   useNewUrlParser: true,
@@ -45,6 +53,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/chatapp',
 app.use('/api/auth', authRoutes);
 app.use('/api/messages', authenticateToken, messageRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
+app.use('/api/groups', authenticateToken, groupRoutes);
 
 // Socket.IO connection handling
 const connectedUsers = new Map();
@@ -126,6 +135,29 @@ io.on('connection', (socket) => {
       }
     }
   });
+
+  // Join group room
+  socket.on('joinGroup', async (groupId) => {
+    try {
+      const group = await Group.findById(groupId);
+      if (group && group.members.some(m => m.user.toString() === socket.userId)) {
+        socket.join(`group_${groupId}`);
+        socket.emit('joinedGroup', groupId);
+      }
+    } catch (err) {
+      console.error('joinGroup error:', err);
+    }
+  });
+
+  // Leave group room
+  socket.on('leaveGroup', (groupId) => {
+    socket.leave(`group_${groupId}`);
+    socket.emit('leftGroup', groupId);
+  });
+
+  // Listen for new group messages (emit to group room)
+  // This is handled after message is saved in DB and API, so here we listen for a custom event from the API if needed
+  // Instead, we can emit from the API if needed, or listen for a custom event here if you want to support real-time typing, etc.
 });
 
 const PORT = process.env.PORT || 5000;

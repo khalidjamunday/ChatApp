@@ -4,6 +4,7 @@ import UserList from './UserList';
 import MessageArea from './MessageArea';
 import { io } from 'socket.io-client';
 import { FiLogOut, FiUsers, FiMessageCircle, FiCheckCircle, FiAlertTriangle, FiMoon, FiSun } from 'react-icons/fi';
+import CreateGroup from './CreateGroup';
 
 // Beautiful Toast component
 const Toast = ({ message, onClose }) => (
@@ -52,7 +53,7 @@ const LogoutConfirmationModal = ({ onConfirm, onCancel }) => (
 
 const Chat = () => {
   const { user, logout } = useAuth();
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedChat, setSelectedChat] = useState(null);
   const [users, setUsers] = useState([]);
   const [messagesMap, setMessagesMap] = useState({}); // Use object as map
   const messages = Object.values(messagesMap).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
@@ -73,6 +74,33 @@ const Chat = () => {
     listeningForRealtimeRef.current = listeningForRealtime;
   }, [listeningForRealtime]);
   // REMOVED: const [loadingMessages, setLoadingMessages] = useState(false);
+  const [groups, setGroups] = useState([]);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+
+  const getToken = () => localStorage.getItem('token');
+
+  const loadUsers = async () => {
+    try {
+      const response = await fetch('/api/users', {
+        headers: {
+          'Authorization': `Bearer ${getToken()}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const usersData = await response.json();
+      
+      const usersArray = Array.isArray(usersData) ? usersData : [];
+      setUsers(usersArray);
+      
+      const onlineUserIds = new Set(usersArray.filter(u => u.isOnline).map(u => u._id));
+      setOnlineUsers(onlineUserIds);
+    } catch (error) {
+      console.error('Error loading users:', error);
+      setUsers([]);
+    }
+  };
 
   const toggleDarkMode = () => setDarkMode((prev) => !prev);
 
@@ -113,20 +141,22 @@ const Chat = () => {
 
     // Listen for new messages
     newSocket.on('newMessage', (message) => {
-      console.log('[socket newMessage] Received:', message._id, 'for chat:', currentChatUserIdRef.current, 'msg sender:', message.sender._id, 'msg recipient:', message.recipient._id);
-      if (
-        listeningForRealtimeRef.current &&
-        currentChatUserIdRef.current &&
-        (message.sender._id === currentChatUserIdRef.current || message.recipient._id === currentChatUserIdRef.current)
-      ) {
-        setMessagesMap(prev => {
+      const currentChatId = currentChatUserIdRef.current;
+      if (!listeningForRealtimeRef.current || !currentChatId) return;
+
+      const isDirectMessageForCurrentChat =
+        !message.group &&
+        (message.sender._id === currentChatId || message.recipient._id === currentChatId);
+
+      const isGroupMessageForCurrentChat =
+        message.group && message.group._id === currentChatId;
+
+      if (isDirectMessageForCurrentChat || isGroupMessageForCurrentChat) {
+        setMessagesMap((prev) => {
           if (prev[message._id]) {
-            console.log('[socket newMessage] Duplicate detected, skipping:', message._id);
-            return prev;
+            return prev; // Skip duplicate
           }
-          const updated = { ...prev, [message._id]: message };
-          console.log('[socket newMessage] State after add:', Object.keys(updated));
-          return updated;
+          return { ...prev, [message._id]: message };
         });
       }
     });
@@ -185,111 +215,117 @@ const Chat = () => {
     };
   }, [user._id]);
 
+  useEffect(() => {
+    if (socket) {
+      socket.on('onlineUsersList', (userIds) => {
+        setOnlineUsers(new Set(userIds));
+      });
+
+      socket.emit('getOnlineUsers');
+      
+    return () => {
+        socket.off('onlineUsersList');
+      };
+      }
+  }, [socket]);
+
   // Scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Load users on component mount (no polling for online status)
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  // On mount, request current online users from server
-  useEffect(() => {
-    if (socket) {
-      socket.emit('getOnlineUsers');
-      socket.on('onlineUsersList', (userIds) => {
-        console.log('Received online users list:', userIds);
-        setOnlineUsers(new Set(userIds));
-      });
-    }
-    return () => {
-      if (socket) {
-        socket.off('onlineUsersList');
-      }
-    };
-  }, [socket]);
-
   // Load messages when selected user changes
   useEffect(() => {
-    if (selectedUser) {
-      setMessagesMap({}); // Clear messages immediately on chat switch
-      setListeningForRealtime(false); // Ignore real-time during fetch
-      currentChatUserIdRef.current = selectedUser._id; // Track current chat
-      loadMessages(selectedUser._id);
-    }
-  }, [selectedUser]);
+    if (!selectedChat) return;
 
-  // Get token from localStorage for authenticated requests
-  const getToken = () => localStorage.getItem('token');
+    setMessagesMap({});
+    const chatItem = selectedChat;
 
-  const loadUsers = async () => {
-    try {
-      const response = await fetch('/api/users', {
-        headers: {
-          'Authorization': `Bearer ${getToken()}`
-        }
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const usersData = await response.json();
-      
-      // Ensure usersData is an array
-      const usersArray = Array.isArray(usersData) ? usersData : [];
-      console.log('Loaded users:', usersArray);
-      console.log('Users with online status:', usersArray.map(u => ({ username: u.username, isOnline: u.isOnline })));
-      setUsers(usersArray);
-      
-      // Set online users
-      const onlineUserIds = new Set(usersArray.filter(u => u.isOnline).map(u => u._id));
-      console.log('Online users:', Array.from(onlineUserIds));
-      setOnlineUsers(onlineUserIds);
-    } catch (error) {
-      console.error('Error loading users:', error);
-      setUsers([]);
-    }
-  };
-
-  const loadMessages = async (userId) => {
-    console.log('[loadMessages] Start fetching for user:', userId);
+    const load = async () => {
+      currentChatUserIdRef.current = chatItem._id;
     setFetchingMessages(true);
     setListeningForRealtime(false);
     try {
-      const response = await fetch(`/api/messages/conversation/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${getToken()}`
-        }
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+        const isGroup = !!chatItem.members;
+        const url = isGroup
+          ? `/api/messages/conversation/group/${chatItem._id}`
+          : `/api/messages/conversation/${chatItem._id}`;
+        console.log('[LOAD] Selected chat:', chatItem);
+        console.log('[LOAD] Is group:', isGroup);
+        console.log('[LOAD] Fetching URL:', url);
+        const response = await fetch(url, { headers: { 'Authorization': `Bearer ${getToken()}` } });
+        if (!response.ok) throw new Error('Failed to fetch messages');
       const fetchedMessages = await response.json();
-      console.log('[loadMessages] Fetched messages:', fetchedMessages.map(m => m._id));
-      if (currentChatUserIdRef.current === userId) {
+        console.log('[LOAD] Server response:', fetchedMessages);
+        if (currentChatUserIdRef.current === chatItem._id) {
         const newMap = {};
         fetchedMessages.forEach(m => { newMap[m._id] = m; });
         setMessagesMap(newMap);
-        setListeningForRealtime(true);
-        setTimeout(() => {
-          // Log after state update
-          console.log('[loadMessages] State after setMessagesMap:', Object.keys(newMap));
-        }, 0);
+          console.log('[LOAD] Set messagesMap:', newMap);
       }
     } catch (error) {
-      console.error('Error loading messages:', error);
+        console.error('[LOAD] Error loading messages:', error);
       setMessagesMap({});
+      } finally {
+        if (currentChatUserIdRef.current === chatItem._id) {
       setListeningForRealtime(true);
-    } finally {
       setFetchingMessages(false);
+        }
+      }
+    };
+    load();
+  }, [selectedChat?._id]);
+
+
+  // Fetch groups for the user
+  const loadGroups = async () => {
+    try {
+      const response = await fetch('/api/groups/my', {
+        headers: { 'Authorization': `Bearer ${getToken()}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch groups');
+      const data = await response.json();
+      setGroups(data);
+    } catch (err) {
+      setGroups([]);
     }
   };
-  
 
+  // Load users and groups on mount
+  useEffect(() => {
+    loadUsers();
+    loadGroups();
+  }, []);
+
+  // Handle group creation
+  const handleCreateGroup = async (groupData) => {
+    const response = await fetch('/api/groups/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify(groupData)
+    });
+    if (!response.ok) throw new Error('Failed to create group');
+    setShowCreateGroup(false);
+    await loadGroups();
+  };
+
+  // Handle user/group selection
+  const handleSelect = (item) => {
+    if (selectedChat?._id === item._id) return;
+
+    if (item && item.members) {
+      socket?.emit('joinGroup', item._id);
+    }
+    setSelectedChat(item);
+  };
+
+  // Send message (user or group)
   const sendMessage = async (content) => {
-    if (!selectedUser || !content.trim()) return;
-
+    if (!selectedChat || !content.trim()) return;
+    const isGroup = selectedChat.members;
     try {
       const response = await fetch('/api/messages/send', {
         method: 'POST',
@@ -297,27 +333,25 @@ const Chat = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getToken()}`
         },
-        body: JSON.stringify({
-          recipientId: selectedUser._id,
+        body: JSON.stringify(isGroup ? {
+          groupId: selectedChat._id,
+          content: content.trim()
+        } : {
+          recipientId: selectedChat._id,
           content: content.trim()
         })
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      // No socket.emit here! The backend will emit the newMessage event after saving.
+      if (!response.ok) throw new Error('Failed to send message');
     } catch (error) {
-      console.error('Error sending message:', error);
       alert('Failed to send message. Please try again.');
     }
   };
 
   const handleTyping = (isTyping) => {
-    if (selectedUser && socket) {
+    if (selectedChat && socket) {
       socket.emit('typing', {
         userId: user._id,
-        recipientId: selectedUser._id,
+        recipientId: selectedChat._id,
         isTyping
       });
     }
@@ -334,79 +368,6 @@ const Chat = () => {
 
   const cancelLogout = () => {
     setShowLogoutModal(false);
-  };
-
-  // Improved delete handlers
-  const handleDeleteMessage = async (messageId) => {
-    if (!messageId) {
-      console.error('No message ID provided');
-      return;
-    }
-
-    try {
-      console.log('Deleting message:', messageId);
-      const token = getToken();
-      
-      const response = await fetch(`/api/messages/${messageId}`, {
-        method: 'DELETE',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('Delete message result:', result);
-
-      // Remove the message from local state immediately
-      setMessagesMap(prev => {
-        const newMap = { ...prev };
-        delete newMap[messageId];
-        return newMap;
-      });
-      
-    } catch (error) {
-      console.error('Error deleting message:', error);
-      alert('Failed to delete message. Please try again.');
-    }
-  };
-
-  const handleDeleteChat = async () => {
-    if (!selectedUser) {
-      console.error('No selected user');
-      return;
-    }
-
-    try {
-      console.log('Deleting chat with user:', selectedUser._id);
-      const token = getToken();
-      
-      const response = await fetch(`/api/messages/conversation/${selectedUser._id}`, {
-        method: 'DELETE',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('Delete chat result:', result);
-
-      // Clear all messages from local state immediately
-      setMessagesMap({});
-      
-    } catch (error) {
-      console.error('Error deleting chat:', error);
-      alert('Failed to delete chat. Please try again.');
-    }
   };
 
   // Diagnostic logging for duplicates
@@ -481,23 +442,25 @@ const Chat = () => {
             </div>
           )}
         </div>
-        {/* User List */}
+        {/* User and Group List */}
         {showUserList && (
           <UserList
             users={users}
-            selectedUser={selectedUser}
-            onSelectUser={setSelectedUser}
+            groups={groups}
+            selectedChat={selectedChat}
+            onSelectItem={handleSelect}
             onlineUsers={onlineUsers}
             currentUser={user}
             darkMode={darkMode}
+            onCreateGroupClick={() => setShowCreateGroup(true)}
           />
         )}
       </div>
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
-        {selectedUser ? (
+        {selectedChat ? (
           <MessageArea
-            selectedUser={selectedUser}
+            selectedUser={selectedChat}
             messages={messages}
             onSendMessage={sendMessage}
             onTyping={handleTyping}
@@ -505,9 +468,7 @@ const Chat = () => {
             currentUser={user}
             messagesEndRef={messagesEndRef}
             darkMode={darkMode}
-            onDeleteMessage={handleDeleteMessage}
-            onDeleteChat={handleDeleteChat}
-            loadMessages={loadMessages}
+            loadMessages={() => selectedChat && handleSelect(selectedChat)}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center">
@@ -531,6 +492,15 @@ const Chat = () => {
       >
         <FiUsers size={20} />
       </button>
+      {/* Create Group Modal */}
+      <CreateGroup
+        users={users}
+        onCreate={handleCreateGroup}
+        onClose={() => setShowCreateGroup(false)}
+        show={showCreateGroup}
+        currentUser={user}
+        darkMode={darkMode}
+      />
     </div>
   );
 };

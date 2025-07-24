@@ -19,12 +19,34 @@ router.get('/conversation/:userId', async (req, res) => {
     })
     .populate('sender', 'username avatar')
     .populate('recipient', 'username avatar')
-    .sort({ createdAt: 1 })
+    .sort({ createdAt: -1 }) // <-- FIX: Sort descending to get latest
     .limit(50);
 
-    res.json(messages);
+    res.json(messages.reverse()); // <-- FIX: Reverse to show in correct chronological order
   } catch (error) {
     console.error('Get conversation error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get conversation for a group
+router.get('/conversation/group/:groupId', async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const currentUserId = req.user.userId;
+    // Check if user is a member of the group
+    const Group = require('../models/Group');
+    const group = await Group.findById(groupId);
+    if (!group || !group.members.some(m => m.user.toString() === currentUserId)) {
+      return res.status(403).json({ message: 'Not a member of this group' });
+    }
+    const messages = await Message.find({ group: groupId })
+      .populate('sender', 'username avatar')
+      .sort({ createdAt: -1 }) // <-- FIX: Sort descending to get latest
+      .limit(100);
+    res.json(messages.reverse()); // <-- FIX: Reverse to show in correct chronological order
+  } catch (error) {
+    console.error('Get group conversation error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -32,45 +54,55 @@ router.get('/conversation/:userId', async (req, res) => {
 // Send a message
 router.post('/send', async (req, res) => {
   try {
-    const { recipientId, content, messageType = 'text' } = req.body;
+    const { recipientId, groupId, content, messageType = 'text' } = req.body;
     const senderId = req.user.userId;
-
-    if (!content || !recipientId) {
-      return res.status(400).json({ message: 'Content and recipient are required' });
+    if (!content || (!recipientId && !groupId)) {
+      return res.status(400).json({ message: 'Content and recipient or groupId are required' });
     }
-
-    // Check if recipient exists
-    const recipient = await User.findById(recipientId);
-    if (!recipient) {
-      return res.status(404).json({ message: 'Recipient not found' });
+    let message;
+    if (groupId) {
+      // Group message
+      const Group = require('../models/Group');
+      const group = await Group.findById(groupId);
+      if (!group || !group.members.some(m => m.user.toString() === senderId)) {
+        return res.status(403).json({ message: 'Not a member of this group' });
+      }
+      message = new Message({
+        sender: senderId,
+        group: groupId,
+        content,
+        messageType
+      });
+    } else {
+      // Direct message (existing logic)
+      const recipient = await User.findById(recipientId);
+      if (!recipient) {
+        return res.status(404).json({ message: 'Recipient not found' });
+      }
+      message = new Message({
+        sender: senderId,
+        recipient: recipientId,
+        content,
+        messageType
+      });
     }
-
-    const message = new Message({
-      sender: senderId,
-      recipient: recipientId,
-      content,
-      messageType
-    });
-
     await message.save();
-
-    // Populate sender and recipient info
     await message.populate('sender', 'username avatar');
-    await message.populate('recipient', 'username avatar');
-
-    // Emit socket event to both users for real-time update
     const io = req.app.get('socketio');
-    if (io) {
-      // Find connected socket IDs for both users
-      const connectedUsers = io.sockets.sockets;
-      // Emit to recipient
-      for (const [id, socket] of connectedUsers) {
-        if (socket.userId === recipientId) {
-          socket.emit('newMessage', message);
-        }
-        if (socket.userId === senderId && senderId !== recipientId) {
-          socket.emit('newMessage', message);
-        }
+
+    if (message.group) {
+      await message.populate('group', 'name members');
+      io.to(`group_${message.group._id}`).emit('newMessage', message);
+    } else {
+      await message.populate('recipient', 'username avatar');
+      const recipientSocketId = req.connectedUsers.get(recipientId);
+      if (recipientSocketId) {
+        io.to(recipientSocketId).emit('newMessage', message);
+      }
+      // Also send to sender
+      const senderSocketId = req.connectedUsers.get(senderId);
+      if (senderSocketId) {
+        io.to(senderSocketId).emit('newMessage', message);
       }
     }
 
