@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiSend, FiMoreVertical } from 'react-icons/fi';
+import { FiSend, FiMoreVertical, FiTrash2 } from 'react-icons/fi';
 import ReactDOM from 'react-dom';
 
 const MessageArea = ({ 
@@ -11,11 +11,15 @@ const MessageArea = ({
   currentUser, 
   messagesEndRef, 
   darkMode, 
-  loadMessages 
+  loadMessages,
+  onDeleteConversation // new prop
 }) => {
   const [messageInput, setMessageInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = React.useRef(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const isGroup = selectedUser && selectedUser.members;
   const isTypingIndicator = !isGroup && typingUsers[selectedUser._id];
@@ -47,6 +51,18 @@ const MessageArea = ({
       }
     };
   }, [isTyping]);
+
+  // Dropdown close on click outside
+  React.useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleClick = (e) => {
+      if (!e.target.closest('.dropdown-menu') && !e.target.closest('.dropdown-trigger')) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [dropdownOpen]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -157,14 +173,65 @@ const MessageArea = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-300">
+          <div className="flex items-center gap-2 relative">
+            <button
+              className="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-300 dropdown-trigger"
+              onClick={() => setDropdownOpen((v) => !v)}
+              aria-label="More options"
+            >
               <FiMoreVertical size={20} />
             </button>
+            {dropdownOpen && (
+              <div className={`dropdown-menu absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 animate-fade-in-up`}>
+                <ul className="py-1">
+                  {!isGroup && (
+                    <li>
+                      <button
+                        className="flex items-center gap-2 w-full px-4 py-2 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-700 text-sm"
+                        onClick={() => { setShowDeleteConfirm(true); setDropdownOpen(false); }}
+                      >
+                        <FiTrash2 /> Delete Chat
+                      </button>
+                    </li>
+                  )}
+                  {/* Add more menu items here if needed */}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-8 w-96 text-center relative">
+            <FiTrash2 className="mx-auto text-3xl text-red-500 mb-3" />
+            <h2 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">Delete Conversation?</h2>
+            <p className="mb-6 text-gray-600 dark:text-gray-300">Are you sure you want to delete all messages with <span className="font-semibold">{selectedUser.username}</span>? This cannot be undone.</p>
+            <div className="flex justify-center space-x-4">
+              <button
+                className="px-5 py-2 bg-red-600 text-white rounded-lg font-semibold shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 transition-all"
+                onClick={async () => {
+                  setDeleteLoading(true);
+                  await onDeleteConversation?.();
+                  setDeleteLoading(false);
+                  setShowDeleteConfirm(false);
+                }}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+              <button
+                className="px-5 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold shadow hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleteLoading}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Messages */}
       <div className={`flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar ${darkMode ? 'bg-gray-900' : ''}`} style={{ minHeight: 0 }}>
         {messages.length === 0 ? (

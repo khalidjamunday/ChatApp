@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FiSearch, FiCircle, FiUserPlus, FiUsers, FiMessageSquare } from 'react-icons/fi';
+import { FiSearch, FiCircle, FiUserPlus, FiUsers, FiMessageSquare, FiChevronLeft } from 'react-icons/fi';
 
 const UserList = ({ 
   users, 
@@ -9,10 +9,12 @@ const UserList = ({
   onlineUsers, 
   currentUser, 
   darkMode,
-  onCreateGroupClick 
+  onCreateGroupClick,
+  activeTab,
+  setActiveTab,
+  onToggleSidebar // new prop
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('users');
 
   const usersArray = Array.isArray(users) ? users : [];
   const groupsArray = Array.isArray(groups) ? groups : [];
@@ -57,6 +59,9 @@ const UserList = ({
     <div className={`flex-1 flex flex-col border-r shadow-md ${darkMode ? 'bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-b from-white via-gray-50 to-gray-100 border-gray-200'}`}
       style={{ position: 'relative', zIndex: 30 }}>
       
+      {/* Sidebar toggle button for mobile, top-left inside sidebar */}
+      {/* Remove the chevron left sidebar close button from UserList.js (the lg:hidden flex justify-end mb-2 div and its button) */}
+
       <div className={`p-4 border-b sticky top-0 z-10 ${darkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-white'}`}> 
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -73,8 +78,28 @@ const UserList = ({
       </div>
 
       <div className={`flex border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-        <TabButton label="Users" tabName="users" icon={<FiUsers />} />
-        <TabButton label="Groups" tabName="groups" icon={<FiMessageSquare />} />
+        <button
+          onClick={() => setActiveTab('users')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition-all duration-200 border-b-2 ${
+            activeTab === 'users'
+              ? 'border-primary-500 text-primary-500'
+              : `border-transparent ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-black'}`
+          }`}
+          title="Show Users"
+        >
+          <FiUsers /> Users
+        </button>
+        <button
+          onClick={() => setActiveTab('groups')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition-all duration-200 border-b-2 ${
+            activeTab === 'groups'
+              ? 'border-primary-500 text-primary-500'
+              : `border-transparent ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-black'}`
+          }`}
+          title="Show Groups"
+        >
+          <FiMessageSquare /> Groups
+        </button>
       </div>
 
       <div className={`flex-1 overflow-y-auto custom-scrollbar ${darkMode ? 'bg-gray-900' : ''}`}> 

@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import UserList from './UserList';
 import MessageArea from './MessageArea';
 import { io } from 'socket.io-client';
-import { FiLogOut, FiUsers, FiMessageCircle, FiCheckCircle, FiAlertTriangle, FiMoon, FiSun } from 'react-icons/fi';
+import { FiLogOut, FiUsers, FiMessageCircle, FiCheckCircle, FiAlertTriangle, FiMoon, FiSun, FiTrash2, FiMenu, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 import CreateGroup from './CreateGroup';
 
 // Beautiful Toast component
@@ -76,6 +76,9 @@ const Chat = () => {
   // REMOVED: const [loadingMessages, setLoadingMessages] = useState(false);
   const [groups, setGroups] = useState([]);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  // Remove: const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // Remove: const [deleteLoading, setDeleteLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('users');
 
   const getToken = () => localStorage.getItem('token');
 
@@ -370,6 +373,9 @@ const Chat = () => {
     setShowLogoutModal(false);
   };
 
+  // Function to delete all chats with the selected user
+  // Remove: handleDeleteConversation function
+
   // Diagnostic logging for duplicates
   useEffect(() => {
     console.log('[messagesMap] keys:', Object.keys(messagesMap));
@@ -400,6 +406,16 @@ const Chat = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {/* Sidebar close button, only on mobile and when sidebar is open */}
+                {showUserList && (
+                  <button
+                    onClick={() => setShowUserList(false)}
+                    className="lg:hidden text-gray-400 hover:text-gray-600 transition-colors rounded-full p-2"
+                    title="Hide sidebar"
+                  >
+                    <FiChevronLeft size={22} />
+                  </button>
+                )}
                 <button
                   onClick={toggleDarkMode}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-yellow-400 transition-colors mr-2"
@@ -414,6 +430,16 @@ const Chat = () => {
                 >
                   <FiLogOut size={20} />
                 </button>
+                {/* Expand sidebar button, only when sidebar is closed and on mobile */}
+                {!showUserList && (
+                  <button
+                    onClick={() => setShowUserList(true)}
+                    className="lg:hidden text-gray-400 hover:text-gray-600 transition-colors rounded-full p-2"
+                    title="Show sidebar"
+                  >
+                    <FiChevronRight size={22} />
+                  </button>
+                )}
               </div>
             </>
           ) : (
@@ -453,6 +479,9 @@ const Chat = () => {
             currentUser={user}
             darkMode={darkMode}
             onCreateGroupClick={() => setShowCreateGroup(true)}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            onToggleSidebar={() => setShowUserList((v) => !v)}
           />
         )}
       </div>
@@ -469,6 +498,21 @@ const Chat = () => {
             messagesEndRef={messagesEndRef}
             darkMode={darkMode}
             loadMessages={() => selectedChat && handleSelect(selectedChat)}
+            onDeleteConversation={async () => {
+              if (!selectedChat || selectedChat.members) return;
+              try {
+                const response = await fetch(`/api/messages/conversation/${selectedChat._id}`, {
+                  method: 'DELETE',
+                  headers: { 'Authorization': `Bearer ${getToken()}` }
+                });
+                if (!response.ok) throw new Error('Failed to delete conversation');
+                setMessagesMap({});
+                setShowToast('All messages deleted successfully.');
+                setSelectedChat(null); // Clear chat view after deletion
+              } catch (err) {
+                setShowToast('Failed to delete messages.');
+              }
+            }}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center">
@@ -485,13 +529,6 @@ const Chat = () => {
         )}
       </div>
 
-      {/* Mobile toggle button */}
-      <button
-        onClick={() => setShowUserList(!showUserList)}
-        className="lg:hidden fixed bottom-4 right-4 bg-primary-600 text-white p-3 rounded-full shadow-lg z-50"
-      >
-        <FiUsers size={20} />
-      </button>
       {/* Create Group Modal */}
       <CreateGroup
         users={users}
