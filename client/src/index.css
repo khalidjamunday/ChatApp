@@ -26,7 +26,7 @@
   }
   
   .message-bubble {
-    @apply max-w-xs lg:max-w-md px-4 py-2 rounded-lg break-words;
+    @apply max-w-[280px] sm:max-w-xs md:max-w-sm lg:max-w-md px-3 md:px-4 py-2 md:py-3 rounded-lg break-words;
   }
   
   .message-sent {
@@ -51,6 +51,32 @@
   
   .offline-indicator {
     @apply w-3 h-3 bg-gray-400 rounded-full border-2 border-white;
+  }
+  
+  /* Mobile-specific improvements */
+  @media (max-width: 768px) {
+    .btn-primary {
+      @apply py-3 px-4 text-base;
+    }
+    
+    .input-field {
+      @apply py-3 px-4 text-base;
+    }
+    
+    /* Touch-friendly improvements */
+    button, input, textarea, select {
+      @apply touch-manipulation;
+    }
+    
+    /* Prevent zoom on input focus */
+    input, textarea, select {
+      font-size: 16px;
+    }
+  }
+  
+  /* Touch-friendly improvements for all devices */
+  button, input, textarea, select {
+    @apply touch-manipulation;
   }
 }
 

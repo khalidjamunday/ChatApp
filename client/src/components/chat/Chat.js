@@ -60,7 +60,7 @@ const Chat = () => {
   const [socket, setSocket] = useState(null);
   const [typingUsers, setTypingUsers] = useState({});
   const [onlineUsers, setOnlineUsers] = useState(new Set());
-  const [showUserList, setShowUserList] = useState(true);
+  const [showUserList, setShowUserList] = useState(window.innerWidth >= 768);
   const messagesEndRef = useRef(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -73,6 +73,20 @@ const Chat = () => {
   useEffect(() => {
     listeningForRealtimeRef.current = listeningForRealtime;
   }, [listeningForRealtime]);
+
+  // Handle window resize for responsive sidebar
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setShowUserList(true);
+      } else {
+        setShowUserList(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   // REMOVED: const [loadingMessages, setLoadingMessages] = useState(false);
   const [groups, setGroups] = useState([]);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -391,7 +405,15 @@ const Chat = () => {
         <LogoutConfirmationModal onConfirm={confirmLogout} onCancel={cancelLogout} />
       )}
       {/* Sidebar */}
-      <div className={`${showUserList ? 'w-80' : 'w-16'} bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 flex flex-col`}>
+      <div className={`${
+        showUserList 
+          ? 'w-80 md:w-80 lg:w-80' 
+          : 'w-16 md:w-16 lg:w-16'
+        } ${
+          showUserList 
+            ? 'fixed md:relative inset-y-0 left-0 z-40 w-80' 
+            : 'hidden md:flex'
+        } bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 flex flex-col`}>
         {/* Header */}
         <div className={`p-4 border-b flex items-center justify-between ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           {showUserList ? (
@@ -486,7 +508,14 @@ const Chat = () => {
         )}
       </div>
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative">
+        {/* Mobile overlay when sidebar is open */}
+        {showUserList && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+            onClick={() => setShowUserList(false)}
+          />
+        )}
         {selectedChat ? (
           <MessageArea
             selectedUser={selectedChat}
@@ -515,14 +544,26 @@ const Chat = () => {
             }}
           />
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
+          <div className="flex-1 flex items-center justify-center relative">
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setShowUserList(true)}
+              className="absolute top-4 left-4 md:hidden bg-white dark:bg-gray-800 p-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
+            >
+              <FiMenu size={24} className="text-gray-600 dark:text-gray-300" />
+            </button>
+            
+            <div className="text-center px-4">
               <FiMessageCircle size={64} className="mx-auto text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 Welcome to ChatApp
               </h3>
-              <p className="text-gray-500">
+              <p className="text-gray-500 dark:text-gray-400">
                 Select a user from the sidebar to start chatting
+              </p>
+              {/* Mobile hint */}
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-4 md:hidden">
+                Tap the menu button to see your contacts
               </p>
             </div>
           </div>

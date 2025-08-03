@@ -121,14 +121,14 @@ const MessageArea = ({
             </span>
           </div>
         )}
-        <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-2 px-2`}> 
-          <div className={`max-w-xs lg:max-w-md ${isOwnMessage ? 'order-2' : 'order-1'}`}> 
-            <div className={`relative message-bubble px-4 py-2 transition-all duration-200
+        <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-2 px-2 md:px-4`}> 
+          <div className={`max-w-[280px] sm:max-w-xs md:max-w-sm lg:max-w-md ${isOwnMessage ? 'order-2' : 'order-1'}`}> 
+            <div className={`relative message-bubble px-3 md:px-4 py-2 md:py-3 transition-all duration-200
               ${isOwnMessage
                 ? (darkMode ? 'bg-gradient-to-br from-primary-700 to-primary-900 text-white rounded-br-2xl rounded-tl-2xl rounded-bl-md shadow-lg animate-fade-in-up' : 'bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-br-2xl rounded-tl-2xl rounded-bl-md shadow-lg animate-fade-in-up')
                 : (darkMode ? 'bg-gray-800 text-gray-100 border border-gray-700 rounded-bl-2xl rounded-tr-2xl rounded-br-md shadow animate-fade-in-up' : 'bg-white text-gray-900 border border-gray-200 rounded-bl-2xl rounded-tr-2xl rounded-br-md shadow animate-fade-in-up')
             }`}>
-              <p className="text-base leading-relaxed break-words">{message.content}</p>
+              <p className="text-sm md:text-base leading-relaxed break-words">{message.content}</p>
               <div className={`flex items-center justify-end mt-1 space-x-1 ${
                 isOwnMessage ? (darkMode ? 'text-blue-200' : 'text-blue-100') : (darkMode ? 'text-gray-400' : 'text-gray-500')
               }`}>
@@ -143,7 +143,7 @@ const MessageArea = ({
           </div>
           {!isOwnMessage && (
             <div className="order-2 ml-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shadow
+              <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm font-semibold shadow
                 ${darkMode ? 'bg-primary-400 text-gray-900' : 'bg-primary-600 text-white'}`}> 
                 {message.sender.username.charAt(0).toUpperCase()}
               </div>
@@ -157,18 +157,18 @@ const MessageArea = ({
   return (
     <div className={`flex-1 flex flex-col h-full bg-gradient-to-br ${darkMode ? 'from-gray-900 via-gray-800 to-gray-900' : 'from-gray-50 via-white to-gray-100'}`}>
       {/* Header */}
-      <div className={`border-b px-6 py-4 flex-shrink-0 shadow-sm ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
+      <div className={`border-b px-4 md:px-6 py-3 md:py-4 flex-shrink-0 shadow-sm ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold shadow
+          <div className="flex items-center space-x-2 md:space-x-3">
+            <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-semibold shadow text-sm md:text-base
               ${darkMode ? 'bg-primary-400 text-gray-900' : 'bg-primary-600 text-white'}`}>
               {selectedUser && (isGroup ? selectedUser.name.charAt(0).toUpperCase() : selectedUser.username.charAt(0).toUpperCase())}
             </div>
-            <div>
-              <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div className="min-w-0 flex-1">
+              <h3 className={`font-semibold text-sm md:text-base truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 {selectedUser && (isGroup ? selectedUser.name : selectedUser.username)}
               </h3>
-              <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+              <p className={`text-xs md:text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
                 {isGroup ? `${selectedUser.members.length} members` : (selectedUser.isOnline ? 'Online' : 'Offline')}
               </p>
             </div>
@@ -233,7 +233,7 @@ const MessageArea = ({
         </div>
       )}
       {/* Messages */}
-      <div className={`flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar ${darkMode ? 'bg-gray-900' : ''}`} style={{ minHeight: 0 }}>
+      <div className={`flex-1 overflow-y-auto p-2 md:p-4 space-y-2 custom-scrollbar ${darkMode ? 'bg-gray-900' : ''}`} style={{ minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
         {messages.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
             <div className={`text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}> 
@@ -261,25 +261,26 @@ const MessageArea = ({
       </div>
 
       {/* Message Input - fixed at bottom */}
-      <div className={`border-t p-4 flex-shrink-0 sticky bottom-0 z-10 shadow-md flex items-center gap-2
-        ${darkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <form onSubmit={handleSendMessage} className="flex w-full space-x-3">
+      <div className={`border-t p-3 md:p-4 flex-shrink-0 sticky bottom-0 z-10 shadow-md flex items-center gap-2
+        ${darkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}
+        style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+        <form onSubmit={handleSendMessage} className="flex w-full space-x-2 md:space-x-3">
           <input
             type="text"
             value={messageInput}
             onChange={handleInputChange}
             placeholder="Type a message..."
-            className={`input-field flex-1 rounded-full px-4 py-2 focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all shadow-sm
+            className={`input-field flex-1 rounded-full px-3 md:px-4 py-2 md:py-3 text-sm md:text-base focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all shadow-sm
               ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' : 'bg-gray-50 border border-gray-200'}`}
             disabled={!selectedUser}
           />
           <button
             type="submit"
             disabled={!messageInput.trim() || !selectedUser}
-            className={`btn-primary rounded-full px-5 py-2 shadow-md flex items-center justify-center text-lg
+            className={`btn-primary rounded-full px-3 md:px-5 py-2 md:py-3 shadow-md flex items-center justify-center text-base md:text-lg min-w-[44px] md:min-w-[48px]
               ${darkMode ? 'bg-primary-400 hover:bg-primary-500' : ''}`}
           >
-            <FiSend size={20} />
+            <FiSend size={18} className="md:w-5 md:h-5" />
           </button>
         </form>
       </div>

@@ -59,10 +59,7 @@ const UserList = ({
     <div className={`flex-1 flex flex-col border-r shadow-md ${darkMode ? 'bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-b from-white via-gray-50 to-gray-100 border-gray-200'}`}
       style={{ position: 'relative', zIndex: 30 }}>
       
-      {/* Sidebar toggle button for mobile, top-left inside sidebar */}
-      {/* Remove the chevron left sidebar close button from UserList.js (the lg:hidden flex justify-end mb-2 div and its button) */}
-
-      <div className={`p-4 border-b sticky top-0 z-10 ${darkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-white'}`}> 
+      <div className={`p-3 md:p-4 border-b sticky top-0 z-10 ${darkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-white'}`}> 
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <FiSearch className={`h-4 w-4 ${darkMode ? 'text-gray-400' : 'text-gray-400'}`} />
@@ -80,18 +77,19 @@ const UserList = ({
       <div className={`flex border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
         <button
           onClick={() => setActiveTab('users')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition-all duration-200 border-b-2 ${
+          className={`flex-1 flex items-center justify-center gap-1 md:gap-2 py-2 md:py-2.5 text-xs md:text-sm font-semibold transition-all duration-200 border-b-2 ${
             activeTab === 'users'
               ? 'border-primary-500 text-primary-500'
               : `border-transparent ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-black'}`
           }`}
           title="Show Users"
         >
-          <FiUsers /> Users
+          <FiUsers className="w-4 h-4 md:w-5 md:h-5" /> 
+          <span className="hidden sm:inline">Users</span>
         </button>
         <button
           onClick={() => setActiveTab('groups')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition-all duration-200 border-b-2 ${
+          className={`flex-1 flex items-center justify-center gap-1 md:gap-2 py-2 md:py-2.5 text-xs md:text-sm font-semibold transition-all duration-200 border-b-2 ${
             activeTab === 'groups'
               ? 'border-primary-500 text-primary-500'
               : `border-transparent ${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-black'}`
@@ -102,7 +100,7 @@ const UserList = ({
         </button>
       </div>
 
-      <div className={`flex-1 overflow-y-auto custom-scrollbar ${darkMode ? 'bg-gray-900' : ''}`}> 
+      <div className={`flex-1 overflow-y-auto custom-scrollbar ${darkMode ? 'bg-gray-900' : ''}`} style={{ WebkitOverflowScrolling: 'touch' }}> 
         {activeTab === 'users' && (
           <>
             {filteredUsers.length === 0 ? (
@@ -118,16 +116,16 @@ const UserList = ({
                     <div
                       key={user._id}
                       onClick={() => onSelectItem(user)}
-                      className={`p-4 cursor-pointer transition-all duration-150 flex items-center gap-3 rounded-xl mx-2 my-1
+                      className={`p-3 md:p-4 cursor-pointer transition-all duration-150 flex items-center gap-2 md:gap-3 rounded-xl mx-2 my-1
                         ${isSelected ? (darkMode ? 'bg-primary-900 border-r-4 border-primary-400 shadow-md' : 'bg-primary-50 border-r-4 border-primary-600 shadow-md') : ''}
                         ${darkMode ? 'hover:bg-gray-800' : 'hover:bg-primary-50/60'}`}
                     >
                       <div className="relative">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold shadow
+                        <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-semibold shadow text-sm md:text-base
                           ${darkMode ? 'bg-primary-400 text-gray-900' : 'bg-primary-600 text-white'}`}> 
                           {user.username.charAt(0).toUpperCase()}
                         </div>
-                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 shadow
+                        <div className={`absolute -bottom-1 -right-1 w-3 h-3 md:w-4 md:h-4 rounded-full border-2 shadow
                           ${isOnline ? 'bg-green-400 animate-pulse border-white' : (darkMode ? 'bg-gray-700 border-gray-900' : 'bg-gray-300 border-white')}`}/>
                       </div>
                       <div className="flex-1 min-w-0">
@@ -167,12 +165,12 @@ const UserList = ({
                     <div
                       key={group._id}
                       onClick={() => onSelectItem(group)}
-                      className={`p-4 cursor-pointer transition-all duration-150 flex items-center gap-3 rounded-xl mx-2 my-1
+                      className={`p-3 md:p-4 cursor-pointer transition-all duration-150 flex items-center gap-2 md:gap-3 rounded-xl mx-2 my-1
                         ${isSelected ? (darkMode ? 'bg-primary-900 border-r-4 border-primary-400 shadow-md' : 'bg-primary-50 border-r-4 border-primary-600 shadow-md') : ''}
                         ${darkMode ? 'hover:bg-gray-800' : 'hover:bg-primary-50/60'}`}
                     >
                       <div className="relative">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold shadow
+                        <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-semibold shadow text-sm md:text-base
                           ${darkMode ? 'bg-primary-400 text-gray-900' : 'bg-primary-600 text-white'}`}>
                           {group.name.charAt(0).toUpperCase()}
                         </div>
@@ -207,12 +205,12 @@ const UserList = ({
       {/* Move the button here, outside the scrollable area */}
       <button
         onClick={e => { console.log('Create Group icon clicked'); onCreateGroupClick(e); }}
-        className="absolute right-6 bottom-24 md:bottom-20 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg p-4 flex items-center justify-center z-50 transition-all"
+        className="absolute right-4 md:right-6 bottom-20 md:bottom-20 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg p-3 md:p-4 flex items-center justify-center z-50 transition-all"
         style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}
         title="Create Group"
         aria-label="Create Group"
       >
-        <FiUserPlus size={28} />
+        <FiUserPlus size={24} className="md:w-7 md:h-7" />
       </button>
     </div>
   );

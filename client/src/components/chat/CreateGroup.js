@@ -40,8 +40,8 @@ const CreateGroup = ({ users, onCreate, onClose, show, currentUser, darkMode }) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 animate-fade-in">
-      <div className={`w-full max-w-md rounded-2xl shadow-2xl p-8 relative animate-fade-in-up ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 animate-fade-in p-4">
+      <div className={`w-full max-w-md rounded-2xl shadow-2xl p-6 md:p-8 relative animate-fade-in-up ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
         <button
           className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl focus:outline-none"
           onClick={onClose}
@@ -49,7 +49,7 @@ const CreateGroup = ({ users, onCreate, onClose, show, currentUser, darkMode }) 
         >
           ×
         </button>
-        <h2 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Create Group</h2>
+        <h2 className={`text-lg md:text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Create Group</h2>
         <form onSubmit={handleSubmit}>
           <input
             type="text"
