@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiSend, FiMoreVertical, FiTrash2 } from 'react-icons/fi';
-import ReactDOM from 'react-dom';
 
 const MessageArea = ({ 
   selectedUser, 
@@ -10,9 +9,9 @@ const MessageArea = ({
   typingUsers, 
   currentUser, 
   messagesEndRef, 
-  darkMode, 
-  loadMessages,
-  onDeleteConversation // new prop
+  darkMode,
+  isMobile,
+  onDeleteConversation
 }) => {
   const [messageInput, setMessageInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -115,20 +114,20 @@ const MessageArea = ({
     return (
       <React.Fragment key={message._id}>
         {showDate && (
-          <div className="flex justify-center my-4">
-            <span className={`bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full shadow ${darkMode ? 'bg-gray-700 text-gray-300' : ''}`}> 
+          <div className="flex justify-center my-3 sm:my-4">
+            <span className={`bg-gray-200 text-gray-600 text-xs px-2 sm:px-3 py-1 rounded-full shadow ${darkMode ? 'bg-gray-700 text-gray-300' : ''}`}> 
               {formatDate(message.createdAt)}
             </span>
           </div>
         )}
-        <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-2 px-2`}> 
-          <div className={`max-w-xs lg:max-w-md ${isOwnMessage ? 'order-2' : 'order-1'}`}> 
-            <div className={`relative message-bubble px-4 py-2 transition-all duration-200
+        <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-2 px-2 sm:px-3`}> 
+          <div className={`max-w-[85%] sm:max-w-xs lg:max-w-md ${isOwnMessage ? 'order-2' : 'order-1'}`}> 
+            <div className={`relative message-bubble px-3 sm:px-4 py-2 sm:py-2.5 transition-all duration-200
               ${isOwnMessage
                 ? (darkMode ? 'bg-gradient-to-br from-primary-700 to-primary-900 text-white rounded-br-2xl rounded-tl-2xl rounded-bl-md shadow-lg animate-fade-in-up' : 'bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-br-2xl rounded-tl-2xl rounded-bl-md shadow-lg animate-fade-in-up')
                 : (darkMode ? 'bg-gray-800 text-gray-100 border border-gray-700 rounded-bl-2xl rounded-tr-2xl rounded-br-md shadow animate-fade-in-up' : 'bg-white text-gray-900 border border-gray-200 rounded-bl-2xl rounded-tr-2xl rounded-br-md shadow animate-fade-in-up')
             }`}>
-              <p className="text-base leading-relaxed break-words">{message.content}</p>
+              <p className="text-sm sm:text-base leading-relaxed break-words">{message.content}</p>
               <div className={`flex items-center justify-end mt-1 space-x-1 ${
                 isOwnMessage ? (darkMode ? 'text-blue-200' : 'text-blue-100') : (darkMode ? 'text-gray-400' : 'text-gray-500')
               }`}>
@@ -141,9 +140,9 @@ const MessageArea = ({
               </div>
             </div>
           </div>
-          {!isOwnMessage && (
+          {!isOwnMessage && !isMobile && (
             <div className="order-2 ml-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shadow
+              <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold shadow
                 ${darkMode ? 'bg-primary-400 text-gray-900' : 'bg-primary-600 text-white'}`}> 
                 {message.sender.username.charAt(0).toUpperCase()}
               </div>
@@ -155,62 +154,66 @@ const MessageArea = ({
   };
 
   return (
-    <div className={`flex-1 flex flex-col h-full bg-gradient-to-br ${darkMode ? 'from-gray-900 via-gray-800 to-gray-900' : 'from-gray-50 via-white to-gray-100'}`}>
-      {/* Header */}
-      <div className={`border-b px-6 py-4 flex-shrink-0 shadow-sm ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold shadow
-              ${darkMode ? 'bg-primary-400 text-gray-900' : 'bg-primary-600 text-white'}`}>
-              {selectedUser && (isGroup ? selectedUser.name.charAt(0).toUpperCase() : selectedUser.username.charAt(0).toUpperCase())}
-            </div>
-            <div>
-              <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                {selectedUser && (isGroup ? selectedUser.name : selectedUser.username)}
-              </h3>
-              <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                {isGroup ? `${selectedUser.members.length} members` : (selectedUser.isOnline ? 'Online' : 'Offline')}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 relative">
-            <button
-              className="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-300 dropdown-trigger"
-              onClick={() => setDropdownOpen((v) => !v)}
-              aria-label="More options"
-            >
-              <FiMoreVertical size={20} />
-            </button>
-            {dropdownOpen && (
-              <div className={`dropdown-menu absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 animate-fade-in-up`}>
-                <ul className="py-1">
-                  {!isGroup && (
-                    <li>
-                      <button
-                        className="flex items-center gap-2 w-full px-4 py-2 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-700 text-sm"
-                        onClick={() => { setShowDeleteConfirm(true); setDropdownOpen(false); }}
-                      >
-                        <FiTrash2 /> Delete Chat
-                      </button>
-                    </li>
-                  )}
-                  {/* Add more menu items here if needed */}
-                </ul>
+    <div className={`flex-1 flex flex-col h-full bg-gradient-to-br ${darkMode ? 'from-gray-900 via-gray-800 to-gray-900' : 'from-gray-50 via-white to-gray-100'} min-h-0`}>
+      {/* Header - Only show on desktop */}
+      {!isMobile && (
+        <div className={`border-b px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0 shadow-sm ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-semibold shadow text-sm sm:text-base
+                ${darkMode ? 'bg-primary-400 text-gray-900' : 'bg-primary-600 text-white'}`}>
+                {selectedUser && (isGroup ? selectedUser.name.charAt(0).toUpperCase() : selectedUser.username.charAt(0).toUpperCase())}
               </div>
-            )}
+              <div className="min-w-0 flex-1">
+                <h3 className={`font-semibold text-sm sm:text-base truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {selectedUser && (isGroup ? selectedUser.name : selectedUser.username)}
+                </h3>
+                <p className={`text-xs sm:text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'} truncate`}>
+                  {isGroup ? `${selectedUser.members.length} members` : (selectedUser.isOnline ? 'Online' : 'Offline')}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 relative flex-shrink-0">
+              <button
+                className="text-gray-400 hover:text-gray-600 transition-colors dark:hover:text-gray-300 dropdown-trigger p-1"
+                onClick={() => setDropdownOpen((v) => !v)}
+                aria-label="More options"
+              >
+                <FiMoreVertical size={18} />
+              </button>
+              {dropdownOpen && (
+                <div className={`dropdown-menu absolute right-0 top-8 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 animate-fade-in-up`}>
+                  <ul className="py-1">
+                    {!isGroup && (
+                      <li>
+                        <button
+                          className="flex items-center gap-2 w-full px-4 py-2 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-700 text-sm"
+                          onClick={() => { setShowDeleteConfirm(true); setDropdownOpen(false); }}
+                        >
+                          <FiTrash2 /> Delete Chat
+                        </button>
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-8 w-96 text-center relative">
-            <FiTrash2 className="mx-auto text-3xl text-red-500 mb-3" />
-            <h2 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">Delete Conversation?</h2>
-            <p className="mb-6 text-gray-600 dark:text-gray-300">Are you sure you want to delete all messages with <span className="font-semibold">{selectedUser.username}</span>? This cannot be undone.</p>
-            <div className="flex justify-center space-x-4">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-[100] p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-6 sm:p-8 w-full max-w-sm sm:max-w-md text-center relative">
+            <FiTrash2 className="mx-auto text-2xl sm:text-3xl text-red-500 mb-3" />
+            <h2 className="text-base sm:text-lg font-bold mb-2 text-gray-900 dark:text-white">Delete Conversation?</h2>
+            <p className="mb-6 text-gray-600 dark:text-gray-300 text-sm sm:text-base">
+              Are you sure you want to delete all messages with <span className="font-semibold">{selectedUser.username}</span>? This cannot be undone.
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
               <button
-                className="px-5 py-2 bg-red-600 text-white rounded-lg font-semibold shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 transition-all"
+                className="px-5 py-2 bg-red-600 text-white rounded-lg font-semibold shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 transition-all text-sm sm:text-base"
                 onClick={async () => {
                   setDeleteLoading(true);
                   await onDeleteConversation?.();
@@ -222,7 +225,7 @@ const MessageArea = ({
                 {deleteLoading ? 'Deleting...' : 'Yes, Delete'}
               </button>
               <button
-                className="px-5 py-2 bg-gray-200 text-gray-800 rounded-lg font-semibold shadow hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all"
+                className="px-5 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg font-semibold shadow hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-all text-sm sm:text-base"
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={deleteLoading}
               >
@@ -232,22 +235,24 @@ const MessageArea = ({
           </div>
         </div>
       )}
+
       {/* Messages */}
-      <div className={`flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar ${darkMode ? 'bg-gray-900' : ''}`} style={{ minHeight: 0 }}>
+      <div className={`flex-1 overflow-y-auto p-2 sm:p-4 space-y-1 sm:space-y-2 ${darkMode ? 'bg-gray-900' : ''}`} style={{ minHeight: 0 }}>
         {messages.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center p-4">
             <div className={`text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}> 
-              <p>No messages yet</p>
-              <p className="text-sm">Start a conversation!</p>
+              <p className="text-sm sm:text-base">No messages yet</p>
+              <p className="text-xs sm:text-sm">Start a conversation!</p>
             </div>
           </div>
         ) : (
           messages.map(renderMessage)
         )}
+        
         {/* Typing indicator */}
         {isTypingIndicator && (
-          <div className="flex justify-start mb-2">
-            <div className={`message-bubble message-received px-4 py-2 animate-pulse
+          <div className="flex justify-start mb-2 px-2 sm:px-3">
+            <div className={`message-bubble px-3 sm:px-4 py-2 animate-pulse
               ${darkMode ? 'bg-gray-800 border border-gray-700 rounded-bl-2xl rounded-tr-2xl rounded-br-md shadow' : 'bg-white border border-gray-200 rounded-bl-2xl rounded-tr-2xl rounded-br-md shadow'}`}> 
               <div className="typing-indicator flex gap-1">
                 <div className={`typing-dot ${darkMode ? 'bg-gray-500' : 'bg-gray-400'}`} style={{ animationDelay: '0ms' }}></div>
@@ -261,25 +266,28 @@ const MessageArea = ({
       </div>
 
       {/* Message Input - fixed at bottom */}
-      <div className={`border-t p-4 flex-shrink-0 sticky bottom-0 z-10 shadow-md flex items-center gap-2
+      <div className={`border-t p-3 sm:p-4 flex-shrink-0 sticky bottom-0 z-10 shadow-md
         ${darkMode ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <form onSubmit={handleSendMessage} className="flex w-full space-x-3">
+        <form onSubmit={handleSendMessage} className="flex w-full space-x-2 sm:space-x-3">
           <input
             type="text"
             value={messageInput}
             onChange={handleInputChange}
             placeholder="Type a message..."
-            className={`input-field flex-1 rounded-full px-4 py-2 focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all shadow-sm
+            className={`flex-1 rounded-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all shadow-sm
               ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' : 'bg-gray-50 border border-gray-200'}`}
             disabled={!selectedUser}
           />
           <button
             type="submit"
             disabled={!messageInput.trim() || !selectedUser}
-            className={`btn-primary rounded-full px-5 py-2 shadow-md flex items-center justify-center text-lg
-              ${darkMode ? 'bg-primary-400 hover:bg-primary-500' : ''}`}
+            className={`rounded-full px-4 sm:px-5 py-2 sm:py-2.5 shadow-md flex items-center justify-center transition-all duration-200 
+              ${!messageInput.trim() || !selectedUser 
+                ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed' 
+                : 'bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white hover:scale-105 active:scale-95'
+              }`}
           >
-            <FiSend size={20} />
+            <FiSend size={isMobile ? 16 : 20} />
           </button>
         </form>
       </div>
