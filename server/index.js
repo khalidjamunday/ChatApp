@@ -15,11 +15,18 @@ const Group = require('./models/Group');
 
 dotenv.config();
 
+const allowedOrigins = [
+  process.env.CLIENT_URL || "http://localhost:3000",
+  "http://localhost:3001"
+];
+
+console.log('Allowed Origins:', allowedOrigins);
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://localhost:3001"],
+    origin: allowedOrigins,
     methods: ["GET", "POST"]
   }
 });
@@ -29,7 +36,7 @@ app.set('socketio', io);
 
 // Middleware
 app.use(cors({
-  origin: ["http://localhost:3000", "http://localhost:3001"],
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());
