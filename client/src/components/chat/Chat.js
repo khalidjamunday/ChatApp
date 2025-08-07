@@ -161,7 +161,7 @@ const Chat = () => {
 
   // Initialize Socket.IO connection
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io(`${import.meta.env.BACKEND_URL}`);
     setSocket(newSocket);
 
     console.log('Connecting to Socket.IO with user ID:', user._id);

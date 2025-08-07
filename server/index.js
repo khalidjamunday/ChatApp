@@ -19,7 +19,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://localhost:3001"],
+    origin: [`${process.env.CLIENT_URL}`, "http://localhost:3001"],
     methods: ["GET", "POST"]
   }
 });
@@ -29,7 +29,7 @@ app.set('socketio', io);
 
 // Middleware
 app.use(cors({
-  origin: ["http://localhost:3000", "http://localhost:3001"],
+  origin: [`${process.env.CLIENT_URL}`, "http://localhost:3001"],
   credentials: true
 }));
 app.use(express.json());
