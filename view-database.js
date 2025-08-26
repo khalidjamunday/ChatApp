@@ -3,7 +3,7 @@ const User = require('./server/models/User');
 const Message = require('./server/models/Message');
 
 // Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/chatapp', {
+mongoose.connect(`${process.env.MONGODB_URI}`, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
